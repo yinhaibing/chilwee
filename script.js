@@ -202,13 +202,28 @@ async function startLottery() {
     const prizeIndex = prizes.findIndex(p => p.id === selectedPrize.id);
     const sliceAngle = (Math.PI * 2) / prizes.length;
     
-    // 修正指针位置：指针在顶部（-90度位置）
-    // 需要让目标奖品旋转到指针位置
-    const targetIndex = (prizes.length - prizeIndex) % prizes.length;
-    const targetAngle = targetIndex * sliceAngle + sliceAngle / 2;
+    // 指针在顶部（12点钟方向，即-90度位置）
+    // 需要让目标奖品的中心对准指针
+    // 转盘绘制时，奖品0从3点钟方向（0度）开始顺时针绘制
+    // 指针在12点钟方向（-90度或270度）
+    // 要让奖品index的中心对准-90度，需要旋转的角度：
+    // 旋转角度 = -90度 - 奖品中心角度
+    // 奖品中心角度 = index * sliceAngle + sliceAngle/2
+    
+    const prizeCenterAngle = prizeIndex * sliceAngle + sliceAngle / 2;
+    
+    // 计算需要旋转到的角度（让奖品中心对准-90度）
+    // 目标角度 = -90度（指针位置）- 奖品中心角度
+    const targetAngle = -Math.PI / 2 - prizeCenterAngle;
+    
+    // 规范化角度到0-2π范围
+    let normalizedTargetAngle = targetAngle % (Math.PI * 2);
+    if (normalizedTargetAngle < 0) {
+        normalizedTargetAngle += Math.PI * 2;
+    }
     
     // 旋转5圈 + 目标角度
-    const spinAngle = 360 * 5 + (targetAngle * 180 / Math.PI);
+    const spinAngle = 360 * 5 + (normalizedTargetAngle * 180 / Math.PI);
     
     currentRotation += spinAngle * Math.PI / 180;
     
