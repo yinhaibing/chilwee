@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>超威电池抽奖后台管理</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ 超威电池抽奖后台管理</h1>
+            <p>设置抽奖码、奖品和概率</p>
+        </div>
+
+        <div class="admin-container">
+            <div class="settings-section">
+                <h2>🔐 抽奖码设置</h2>
+                <div class="form-group">
+                    <label for="adminCode">管理密码</label>
+                    <input type="password" id="adminCode" placeholder="请输入管理密码">
+                    <button onclick="verifyAdmin()" class="btn-primary">验证</button>
+                </div>
+            </div>
+
+            <div class="settings-content" id="settingsContent" style="display: none;">
+                <div class="settings-section">
+                    <h2>🎫 抽奖码管理</h2>
+                    <div class="form-group">
+                        <label for="codeInput">添加抽奖码</label>
+                        <input type="text" id="codeInput" placeholder="请输入抽奖码">
+                        <button onclick="addCode()" class="btn-primary">添加</button>
+                    </div>
+                    <div class="codes-list">
+                        <h3>现有抽奖码列表：</h3>
+                        <div id="codesList" class="list-container"></div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h2>🏆 奖品设置</h2>
+                    <div class="form-group">
+                        <label for="prizeName">奖品名称</label>
+                        <input type="text" id="prizeName" placeholder="请输入奖品名称">
+                    </div>
+                    <div class="form-group">
+                        <label for="prizeQuantity">奖品数量</label>
+                        <input type="number" id="prizeQuantity" placeholder="请输入奖品数量" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="prizeProbability">中奖概率 (%)</label>
+                        <input type="number" id="prizeProbability" placeholder="请输入中奖概率" min="0" max="100" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="prizeImage">奖品图片</label>
+                        <input type="file" id="prizeImage" accept="image/*" onchange="previewImage(event)">
+                        <div id="imagePreview" class="image-preview"></div>
+                    </div>
+                    <button onclick="addPrize()" class="btn-primary">添加奖品</button>
+
+                    <div class="prizes-table">
+                        <h3>奖品列表：</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>奖品名称</th>
+                                    <th>图片</th>
+                                    <th>数量</th>
+                                    <th>概率</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="prizesTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h2>📊 概率总览</h2>
+                    <div class="probability-summary">
+                        <div class="summary-item">
+                            <span class="label">总概率：</span>
+                            <span id="totalProbability" class="value">0%</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="label">奖品总数：</span>
+                            <span id="totalPrizes" class="value">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="label">已抽奖次数：</span>
+                            <span id="totalDraws" class="value">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h2>📋 抽奖记录</h2>
+                    <button onclick="exportRecords()" class="btn-secondary">导出记录</button>
+                    <button onclick="clearRecords()" class="btn-danger">清空记录</button>
+                    <div class="records-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>抽奖码</th>
+                                    <th>中奖时间</th>
+                                    <th>奖品</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recordsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h2>💾 保存设置</h2>
+                    <button onclick="saveSettings()" class="btn-primary">保存所有设置</button>
+                    <button onclick="loadSettings()" class="btn-secondary">加载设置</button>
+                    <button onclick="resetAll()" class="btn-danger">重置所有</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© 2026 超威电池 | 超威动力 动力中国</p>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>超威电池开门红抽奖</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 超威电池开门红抽奖</h1>
+            <p>好运连连，大奖等你拿！</p>
+        </div>
+
+        <div class="lottery-container">
+            <div class="lottery-code-section">
+                <h2>🎫 输入抽奖码</h2>
+                <div class="input-group">
+                    <input type="text" id="lotteryCode" placeholder="请输入抽奖码" maxlength="20">
+                    <button onclick="startLottery()" id="startBtn">开始抽奖</button>
+                </div>
+                <p class="hint">* 请输入有效的抽奖码参与抽奖</p>
+            </div>
+
+            <div class="wheel-section">
+                <div class="wheel-container">
+                    <canvas id="wheelCanvas" width="400" height="400"></canvas>
+                    <div class="wheel-pointer"></div>
+                    <div class="wheel-center">
+                        <span id="prizeName">抽奖</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="result-section" id="resultSection" style="display: none;">
+                <div class="result-card">
+                    <h3>🎊 恭喜您！</h3>
+                    <div class="prize-display">
+                        <img id="prizeImage" src="" alt="奖品图片">
+                        <p id="prizeText" class="prize-text"></p>
+                    </div>
+                    <button onclick="resetLottery()" class="reset-btn">再来一次</button>
+                </div>
+            </div>
+
+            <div class="prizes-preview">
+                <h3>🏆 奖品列表</h3>
+                <div id="prizesList" class="prizes-list"></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© 2026 超威电池 | 超威动力 动力中国</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
