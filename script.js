@@ -212,15 +212,35 @@ async function startLottery() {
     //          = -π/2 - (index * sliceAngle + sliceAngle/2)
     
     const prizeCenterAngle = prizeIndex * sliceAngle + sliceAngle / 2;
-    const targetRotation = -Math.PI / 2 - prizeCenterAngle;
     
-    // 计算总旋转角度：5圈（10π）+ 目标旋转角度
-    // 确保角度为正数，便于动画
-    const totalRotation = 10 * Math.PI + targetRotation;
+    // 指针在顶部（-π/2），要让奖品中心对准指针
+    // 需要计算从当前角度到目标角度的差值
+    const targetAngle = -Math.PI / 2 - prizeCenterAngle;
     
+    // 计算需要的旋转增量
+    // 先将 currentRotation 归一化到 [0, 2π) 范围
+    const normalizedCurrent = currentRotation % (Math.PI * 2);
+    // 计算目标角度在 [0, 2π) 范围内的值
+    let normalizedTarget = targetAngle % (Math.PI * 2);
+    if (normalizedTarget < 0) {
+        normalizedTarget += Math.PI * 2;
+    }
+    
+    // 计算从当前位置到目标位置的角度差（至少旋转5圈）
+    let rotationIncrement = 10 * Math.PI + (normalizedTarget - normalizedCurrent);
+    
+    // 确保正向旋转
+    while (rotationIncrement < 10 * Math.PI) {
+        rotationIncrement += Math.PI * 2;
+    }
+    
+    // 记录起始角度用于动画
+    const startRotation = currentRotation;
+    // 更新目标旋转角度（累积）
+    const targetRotation = startRotation + rotationIncrement;
     // 更新当前旋转角度
-    currentRotation = totalRotation;
-    
+    currentRotation = targetRotation;
+
     // 动画旋转
     let animationProgress = 0;
     const animationDuration = 5000;
@@ -231,7 +251,7 @@ async function startLottery() {
         animationProgress = Math.min(elapsed / animationDuration, 1);
         
         const easeOut = 1 - Math.pow(1 - animationProgress, 3);
-        const currentAngle = currentRotation * easeOut;
+        const currentAngle = startRotation + (targetRotation - startRotation) * easeOut;
         
         drawWheelWithRotation(currentAngle);
         
