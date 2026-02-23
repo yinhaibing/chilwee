@@ -4,9 +4,20 @@ let lotteryCodes = [];
 let drawRecords = [];
 let adminVerified = false;
 let uploadedImage = null;
+let useFirebase = false; // Firebase 是否已配置
 
 // 默认管理密码
 const ADMIN_PASSWORD = 'chaowei2026';
+
+// 检查 Firebase 是否已配置
+try {
+    if (typeof firebase !== 'undefined') {
+        useFirebase = true;
+        console.log('Firebase 已启用');
+    }
+} catch (e) {
+    console.log('Firebase 未配置，使用本地模式');
+}
 
 // 页面加载时初始化
 window.onload = function() {
@@ -37,6 +48,10 @@ function loadAllData() {
     const savedCodes = localStorage.getItem('chaowei_codes');
     if (savedCodes) {
         lotteryCodes = JSON.parse(savedCodes);
+    } else {
+        // 默认抽奖码
+        lotteryCodes = ['CW2026', 'KAIMENHONG', 'LUCKY666', 'HAPPY2026'];
+        localStorage.setItem('chaowei_codes', JSON.stringify(lotteryCodes));
     }
     
     // 加载抽奖记录
@@ -62,8 +77,8 @@ function verifyAdmin() {
     }
 }
 
-// 添加抽奖码
-function addCode() {
+// 添加抽奖码（Firebase 版本）
+async function addCode() {
     if (!adminVerified) {
         alert('请先验证管理密码！');
         return;
@@ -77,52 +92,168 @@ function addCode() {
         return;
     }
     
-    if (lotteryCodes.includes(code)) {
-        alert('该抽奖码已存在！');
-        return;
+    if (useFirebase) {
+        try {
+            // 检查是否已存在
+            const snapshot = await database.ref('lotteryCodes/' + code).once('value');
+            if (snapshot.exists()) {
+                alert('该抽奖码已存在！');
+                return;
+            }
+            
+            // 添加抽奖码到 Firebase
+            await database.ref('lotteryCodes/' + code).set({
+                status: 'unused',
+                usedBy: '',
+                usedTime: '',
+                prize: ''
+            });
+            
+            codeInput.value = '';
+            updateCodesList();
+            alert('抽奖码添加成功！');
+        } catch (error) {
+            console.error('添加抽奖码失败:', error);
+            alert('添加失败，请重试');
+        }
+    } else {
+        // 本地模式
+        if (lotteryCodes.includes(code)) {
+            alert('该抽奖码已存在！');
+            return;
+        }
+        
+        lotteryCodes.push(code);
+        localStorage.setItem('chaowei_codes', JSON.stringify(lotteryCodes));
+        
+        codeInput.value = '';
+        updateCodesList();
+        alert('抽奖码添加成功！');
     }
-    
-    lotteryCodes.push(code);
-    localStorage.setItem('chaowei_codes', JSON.stringify(lotteryCodes));
-    
-    codeInput.value = '';
-    updateCodesList();
-    alert('抽奖码添加成功！');
 }
 
-// 删除抽奖码
-function deleteCode(code) {
+// 删除抽奖码（Firebase 版本）
+async function deleteCode(code) {
     if (!adminVerified) return;
     
     if (confirm('确定要删除这个抽奖码吗？')) {
-        const index = lotteryCodes.indexOf(code);
-        if (index > -1) {
-            lotteryCodes.splice(index, 1);
-            localStorage.setItem('chaowei_codes', JSON.stringify(lotteryCodes));
-            updateCodesList();
+        if (useFirebase) {
+            try {
+                await database.ref('lotteryCodes/' + code).remove();
+                updateCodesList();
+            } catch (error) {
+                console.error('删除抽奖码失败:', error);
+                alert('删除失败，请重试');
+            }
+        } else {
+            const index = lotteryCodes.indexOf(code);
+            if (index > -1) {
+                lotteryCodes.splice(index, 1);
+                localStorage.setItem('chaowei_codes', JSON.stringify(lotteryCodes));
+                updateCodesList();
+            }
         }
     }
 }
 
-// 更新抽奖码列表
-function updateCodesList() {
+// 更新抽奖码列表（Firebase 版本）
+async function updateCodesList() {
     const codesList = document.getElementById('codesList');
     codesList.innerHTML = '';
     
-    if (lotteryCodes.length === 0) {
-        codesList.innerHTML = '<p style="color: #666;">暂无抽奖码</p>';
-        return;
+    if (useFirebase) {
+        try {
+            // 从 Firebase 加载抽奖码
+            const snapshot = await database.ref('lotteryCodes').once('value');
+            const allCodes = snapshot.val();
+            
+            if (allCodes) {
+                // 统计
+                let total = 0;
+                let unused = 0;
+                let used = 0;
+                
+                Object.keys(allCodes).forEach(code => {
+                    total++;
+                    if (allCodes[code].status === 'unused') {
+                        unused++;
+                    } else {
+                        used++;
+                    }
+                });
+                
+                // 显示统计
+                const statsDiv = document.createElement('div');
+                statsDiv.innerHTML = `
+                    <div style="background: #e8f4f8; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                        <h4 style="margin-bottom: 10px;">📊 抽奖码统计</h4>
+                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                            <span>总数：<strong>${total}</strong></span>
+                            <span style="color: #2ecc71;">未使用：<strong>${unused}</strong></span>
+                            <span style="color: #e74c3c;">已使用：<strong>${used}</strong></span>
+                        </div>
+                    </div>
+                `;
+                codesList.appendChild(statsDiv);
+                
+                // 显示抽奖码列表（只显示未使用的）
+                const unusedSection = document.createElement('div');
+                unusedSection.innerHTML = '<h4 style="color: #2ecc71; margin-bottom: 10px;">✅ 未使用的抽奖码：</h4>';
+                codesList.appendChild(unusedSection);
+                
+                Object.keys(allCodes).forEach(code => {
+                    if (allCodes[code].status === 'unused') {
+                        const codeTag = document.createElement('span');
+                        codeTag.className = 'code-tag';
+                        codeTag.style.background = 'linear-gradient(135deg, #2ecc71, #27ae60)';
+                        codeTag.innerHTML = `
+                            ${code}
+                            <span class="delete-btn" onclick="deleteCode('${code}')">×</span>
+                        `;
+                        codesList.appendChild(codeTag);
+                    }
+                });
+                
+                // 显示已使用的抽奖码
+                const usedSection = document.createElement('div');
+                usedSection.innerHTML = '<h4 style="color: #e74c3c; margin: 20px 0 10px 0;">❌ 已使用的抽奖码：</h4>';
+                codesList.appendChild(usedSection);
+                
+                Object.keys(allCodes).forEach(code => {
+                    if (allCodes[code].status === 'used') {
+                        const codeTag = document.createElement('span');
+                        codeTag.className = 'code-tag';
+                        codeTag.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                        codeTag.innerHTML = `
+                            ${code}
+                            <br><small style="opacity: 0.8;">${allCodes[code].prize}</small>
+                        `;
+                        codesList.appendChild(codeTag);
+                    }
+                });
+            } else {
+                codesList.innerHTML = '<p style="color: #666;">暂无抽奖码，请添加</p>';
+            }
+        } catch (error) {
+            console.error('加载抽奖码失败:', error);
+            codesList.innerHTML = '<p style="color: #e74c3c;">加载失败，请检查 Firebase 配置</p>';
+        }
+    } else {
+        // 本地模式
+        if (lotteryCodes.length === 0) {
+            codesList.innerHTML = '<p style="color: #666;">暂无抽奖码</p>';
+        } else {
+            lotteryCodes.forEach(code => {
+                const codeTag = document.createElement('span');
+                codeTag.className = 'code-tag';
+                codeTag.innerHTML = `
+                    ${code}
+                    <span class="delete-btn" onclick="deleteCode('${code}')">×</span>
+                `;
+                codesList.appendChild(codeTag);
+            });
+        }
     }
-    
-    lotteryCodes.forEach(code => {
-        const codeTag = document.createElement('span');
-        codeTag.className = 'code-tag';
-        codeTag.innerHTML = `
-            ${code}
-            <span class="delete-btn" onclick="deleteCode('${code}')">×</span>
-        `;
-        codesList.appendChild(codeTag);
-    });
 }
 
 // 预览图片
@@ -254,67 +385,138 @@ function updateProbabilitySummary() {
     document.getElementById('totalDraws').textContent = drawRecords.length;
 }
 
-// 更新抽奖记录表格
-function updateRecordsTable() {
+// 更新抽奖记录表格（Firebase 版本）
+async function updateRecordsTable() {
     const tableBody = document.getElementById('recordsTableBody');
     tableBody.innerHTML = '';
     
-    if (drawRecords.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #666;">暂无抽奖记录</td></tr>';
-        return;
+    if (useFirebase) {
+        try {
+            const snapshot = await database.ref('drawRecords').once('value');
+            const records = snapshot.val();
+            
+            if (records) {
+                const recordArray = Object.values(records).reverse();
+                
+                recordArray.forEach(record => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${record.code}</td>
+                        <td>${record.time}</td>
+                        <td>${record.prize}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #666;">暂无抽奖记录</td></tr>';
+            }
+        } catch (error) {
+            console.error('加载抽奖记录失败:', error);
+            tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #e74c3c;">加载失败</td></tr>';
+        }
+    } else {
+        // 本地模式
+        if (drawRecords.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #666;">暂无抽奖记录</td></tr>';
+            return;
+        }
+        
+        const recentRecords = drawRecords.slice(-100).reverse();
+        
+        recentRecords.forEach(record => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${record.code}</td>
+                <td>${record.time}</td>
+                <td>${record.prize}</td>
+            `;
+            tableBody.appendChild(row);
+        });
     }
-    
-    // 显示最近100条记录
-    const recentRecords = drawRecords.slice(-100).reverse();
-    
-    recentRecords.forEach(record => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${record.code}</td>
-            <td>${record.time}</td>
-            <td>${record.prize}</td>
-        `;
-        tableBody.appendChild(row);
-    });
 }
 
-// 导出记录
-function exportRecords() {
+// 导出记录（Firebase 版本）
+async function exportRecords() {
     if (!adminVerified) return;
     
-    if (drawRecords.length === 0) {
-        alert('暂无抽奖记录！');
-        return;
+    if (useFirebase) {
+        try {
+            const snapshot = await database.ref('drawRecords').once('value');
+            const records = snapshot.val();
+            
+            if (!records || Object.keys(records).length === 0) {
+                alert('暂无抽奖记录！');
+                return;
+            }
+            
+            let csvContent = '抽奖码,中奖时间,奖品\n';
+            Object.values(records).forEach(record => {
+                csvContent += `${record.code},${record.time},${record.prize}\n`;
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', '超威电池抽奖记录_' + new Date().toLocaleDateString() + '.csv');
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('导出记录失败:', error);
+            alert('导出失败，请重试');
+        }
+    } else {
+        // 本地模式
+        if (drawRecords.length === 0) {
+            alert('暂无抽奖记录！');
+            return;
+        }
+        
+        let csvContent = '抽奖码,中奖时间,奖品\n';
+        drawRecords.forEach(record => {
+            csvContent += `${record.code},${record.time},${record.prize}\n`;
+        });
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', '超威电池抽奖记录_' + new Date().toLocaleDateString() + '.csv');
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
-    
-    let csvContent = '抽奖码,中奖时间,奖品\n';
-    drawRecords.forEach(record => {
-        csvContent += `${record.code},${record.time},${record.prize}\n`;
-    });
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', '超威电池抽奖记录_' + new Date().toLocaleDateString() + '.csv');
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
 }
 
-// 清空记录
-function clearRecords() {
+// 清空记录（Firebase 版本）
+async function clearRecords() {
     if (!adminVerified) return;
     
     if (confirm('确定要清空所有抽奖记录吗？此操作不可恢复！')) {
-        drawRecords = [];
-        localStorage.removeItem('chaowei_records');
-        updateRecordsTable();
-        updateProbabilitySummary();
-        alert('记录已清空！');
+        if (useFirebase) {
+            try {
+                await database.ref('drawRecords').remove();
+                updateRecordsTable();
+                updateProbabilitySummary();
+                alert('记录已清空！');
+            } catch (error) {
+                console.error('清空记录失败:', error);
+                alert('清空失败，请重试');
+            }
+        } else {
+            drawRecords = [];
+            localStorage.removeItem('chaowei_records');
+            updateRecordsTable();
+            updateProbabilitySummary();
+            alert('记录已清空！');
+        }
     }
 }
 

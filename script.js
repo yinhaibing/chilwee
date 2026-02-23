@@ -1,9 +1,19 @@
 // 全局变量
 let prizes = [];
-let lotteryCodes = [];
 let drawRecords = [];
 let isSpinning = false;
 let currentRotation = 0;
+let useFirebase = false; // Firebase 是否已配置
+
+// 检查 Firebase 是否已配置
+try {
+    if (typeof firebase !== 'undefined') {
+        useFirebase = true;
+        console.log('Firebase 已启用');
+    }
+} catch (e) {
+    console.log('Firebase 未配置，使用本地模式');
+}
 
 // 颜色数组
 const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'];
@@ -44,24 +54,64 @@ function loadCodes() {
     const savedCodes = localStorage.getItem('chaowei_codes');
     if (savedCodes) {
         lotteryCodes = JSON.parse(savedCodes);
-    }
-}
-
-// 验证抽奖码
-function verifyCode(code) {
-    loadCodes();
-    return lotteryCodes.includes(code);
-}
-
-// 消耗抽奖码
-function consumeCode(code) {
-    const index = lotteryCodes.indexOf(code);
-    if (index > -1) {
-        lotteryCodes.splice(index, 1);
+    } else {
+        // 默认抽奖码
+        lotteryCodes = ['CW2026', 'KAIMENHONG', 'LUCKY666', 'HAPPY2026'];
         localStorage.setItem('chaowei_codes', JSON.stringify(lotteryCodes));
-        return true;
     }
-    return false;
+}
+
+// 验证抽奖码（Firebase 版本）
+async function verifyCode(code) {
+    if (useFirebase) {
+        try {
+            const snapshot = await database.ref('lotteryCodes/' + code).once('value');
+            const codeData = snapshot.val();
+            
+            if (!codeData) {
+                return { valid: false, message: '抽奖码不存在' };
+            }
+            
+            if (codeData.status === 'used') {
+                return { valid: false, message: '抽奖码已使用' };
+            }
+            
+            return { valid: true };
+        } catch (error) {
+            console.error('验证抽奖码失败:', error);
+            return { valid: false, message: '验证失败，请重试' };
+        }
+    } else {
+        // 本地模式
+        return { valid: true };
+    }
+}
+
+// 消耗抽奖码（Firebase 版本）
+async function consumeCode(code, prizeName) {
+    if (useFirebase) {
+        try {
+            const updates = {};
+            updates['lotteryCodes/' + code + '/status'] = 'used';
+            updates['lotteryCodes/' + code + '/usedTime'] = new Date().toLocaleString();
+            updates['lotteryCodes/' + code + '/prize'] = prizeName;
+            
+            // 添加抽奖记录
+            const recordRef = database.ref('drawRecords').push();
+            updates['drawRecords/' + recordRef.key] = {
+                code: code,
+                prize: prizeName,
+                time: new Date().toLocaleString()
+            };
+            
+            await database.ref().update(updates);
+            return true;
+        } catch (error) {
+            console.error('消耗抽奖码失败:', error);
+            return false;
+        }
+    }
+    return true;
 }
 
 // 绘制转盘
@@ -113,8 +163,8 @@ function drawWheel() {
     });
 }
 
-// 开始抽奖
-function startLottery() {
+// 开始抽奖（Firebase 版本）
+async function startLottery() {
     if (isSpinning) return;
     
     const codeInput = document.getElementById('lotteryCode');
@@ -125,8 +175,13 @@ function startLottery() {
         return;
     }
     
-    if (!verifyCode(code)) {
-        alert('抽奖码无效或已使用！');
+    // 验证抽奖码
+    document.getElementById('startBtn').disabled = true;
+    const verification = await verifyCode(code);
+    
+    if (!verification.valid) {
+        alert(verification.message);
+        document.getElementById('startBtn').disabled = false;
         return;
     }
     
@@ -134,15 +189,11 @@ function startLottery() {
     const availablePrizes = prizes.filter(p => p.quantity > 0);
     if (availablePrizes.length === 0) {
         alert('抱歉，奖品已全部抽完！');
+        document.getElementById('startBtn').disabled = false;
         return;
     }
     
     isSpinning = true;
-    document.getElementById('startBtn').disabled = true;
-    
-    // 消耗抽奖码
-    consumeCode(code);
-    codeInput.value = '';
     
     // 根据概率选择奖品
     const selectedPrize = selectPrizeByProbability();
@@ -172,7 +223,7 @@ function startLottery() {
         if (animationProgress < 1) {
             requestAnimationFrame(animate);
         } else {
-            finishLottery(selectedPrize);
+            finishLottery(selectedPrize, code);
         }
     }
     
@@ -251,10 +302,18 @@ function selectPrizeByProbability() {
     return firstPrize;
 }
 
-// 完成抽奖
-function finishLottery(prize) {
+// 完成抽奖（Firebase 版本）
+async function finishLottery(prize, code) {
     isSpinning = false;
     document.getElementById('startBtn').disabled = false;
+    
+    // 消耗抽奖码
+    if (useFirebase && code) {
+        const consumed = await consumeCode(code, prize.name);
+        if (!consumed) {
+            alert('抽奖码消耗失败，但已中奖！请联系管理员');
+        }
+    }
     
     // 显示结果
     const resultSection = document.getElementById('resultSection');
@@ -272,7 +331,7 @@ function finishLottery(prize) {
     
     resultSection.style.display = 'block';
     
-    // 记录抽奖
+    // 记录抽奖（本地）
     recordDraw(prize);
     
     // 更新奖品列表
