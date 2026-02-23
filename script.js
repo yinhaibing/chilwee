@@ -202,30 +202,24 @@ async function startLottery() {
     const prizeIndex = prizes.findIndex(p => p.id === selectedPrize.id);
     const sliceAngle = (Math.PI * 2) / prizes.length;
     
-    // 指针在顶部（12点钟方向，即-90度位置）
-    // 需要让目标奖品的中心对准指针
+    // 指针在顶部（12点钟方向，即-π/2或270度）
     // 转盘绘制时，奖品0从3点钟方向（0度）开始顺时针绘制
-    // 指针在12点钟方向（-90度或270度）
-    // 要让奖品index的中心对准-90度，需要旋转的角度：
-    // 旋转角度 = -90度 - 奖品中心角度
-    // 奖品中心角度 = index * sliceAngle + sliceAngle/2
+    // 每个奖品的起始角度 = index * sliceAngle
+    // 每个奖品的中心角度 = index * sliceAngle + sliceAngle/2
+    
+    // 要让奖品index的中奖，需要让该奖品的中心对准指针（-π/2）
+    // 旋转角度 = 指针角度 - 奖品中心角度
+    //          = -π/2 - (index * sliceAngle + sliceAngle/2)
     
     const prizeCenterAngle = prizeIndex * sliceAngle + sliceAngle / 2;
+    const targetRotation = -Math.PI / 2 - prizeCenterAngle;
     
-    // 计算需要旋转到的角度（让奖品中心对准-90度）
-    // 目标角度 = -90度（指针位置）- 奖品中心角度
-    const targetAngle = -Math.PI / 2 - prizeCenterAngle;
+    // 计算总旋转角度：5圈（10π）+ 目标旋转角度
+    // 确保角度为正数，便于动画
+    const totalRotation = 10 * Math.PI + targetRotation;
     
-    // 规范化角度到0-2π范围
-    let normalizedTargetAngle = targetAngle % (Math.PI * 2);
-    if (normalizedTargetAngle < 0) {
-        normalizedTargetAngle += Math.PI * 2;
-    }
-    
-    // 旋转5圈 + 目标角度
-    const spinAngle = 360 * 5 + (normalizedTargetAngle * 180 / Math.PI);
-    
-    currentRotation += spinAngle * Math.PI / 180;
+    // 更新当前旋转角度
+    currentRotation = totalRotation;
     
     // 动画旋转
     let animationProgress = 0;
@@ -237,7 +231,7 @@ async function startLottery() {
         animationProgress = Math.min(elapsed / animationDuration, 1);
         
         const easeOut = 1 - Math.pow(1 - animationProgress, 3);
-        const currentAngle = (spinAngle * easeOut) * Math.PI / 180;
+        const currentAngle = currentRotation * easeOut;
         
         drawWheelWithRotation(currentAngle);
         
