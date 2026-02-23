@@ -201,7 +201,13 @@ async function startLottery() {
     // 计算旋转角度
     const prizeIndex = prizes.findIndex(p => p.id === selectedPrize.id);
     const sliceAngle = (Math.PI * 2) / prizes.length;
-    const targetAngle = -(prizeIndex * sliceAngle + sliceAngle / 2);
+    
+    // 修正指针位置：指针在顶部（-90度位置）
+    // 需要让目标奖品旋转到指针位置
+    const targetIndex = (prizes.length - prizeIndex) % prizes.length;
+    const targetAngle = targetIndex * sliceAngle + sliceAngle / 2;
+    
+    // 旋转5圈 + 目标角度
     const spinAngle = 360 * 5 + (targetAngle * 180 / Math.PI);
     
     currentRotation += spinAngle * Math.PI / 180;
