@@ -1,14 +1,15 @@
 // Firebase 配置文件
-// 请替换为您自己的 Firebase 配置信息
+// 超威电池开门红抽奖 - Firebase 配置
 
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyD0jnS67gJzsCR9scmco_RjMxK_T8mCV-Y",
+    authDomain: "chilwee.firebaseapp.com",
+    databaseURL: "https://chilwee-default-rtdb.firebaseio.com",
+    projectId: "chilwee",
+    storageBucket: "chilwee.firebasestorage.app",
+    messagingSenderId: "454768941431",
+    appId: "1:454768941431:web:595ad4d91c5761d7fa6972",
+    measurementId: "G-LY7GGHTJQZ"
 };
 
 // 初始化 Firebase
